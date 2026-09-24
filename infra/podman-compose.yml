@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: docker.io/mongodb/mongodb-atlas-local:latest
+    container_name: phone_agent_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGODB_INITDB_DATABASE=ai_phone_agent_db
+    volumes:
+      - mongodb_data:/data/db:Z
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: phone_agent_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data:Z
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: phone_agent_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DB_NAME=ai_phone_agent_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=change_this_to_a_secure_random_secret_in_production_min_32_chars
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ../backend:/app:Z
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: phone_agent_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    volumes:
+      - ../frontend:/app:Z
+
+volumes:
+  mongodb_data:
+  redis_data:
